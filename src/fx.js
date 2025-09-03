@@ -55,14 +55,20 @@ function sleep(ms) {
 }
 
 let canvas = document.getElementById("vfx");
+let canvas2 = document.getElementById("contact-canvas");
 const c = canvas.getContext("2d");
+const c2 = canvas2.getContext("2d");
 
 function resizeCanvas() {
     const dpr = (window.devicePixelRatio || 1) * 0.2;
     canvas.width = canvas.clientWidth * dpr;
     canvas.height = canvas.clientHeight * dpr;
     c.setTransform(1, 0, 0, 1, 0, 0); 
-    c.scale(dpr, dpr); 
+    c.scale(dpr, dpr);
+    canvas2.width = canvas2.clientWidth * dpr;
+    canvas2.height = canvas2.clientHeight * dpr;
+    c2.setTransform(1, 0, 0, 1, 0, 0); 
+    c2.scale(dpr, dpr); 
 }
 
 resizeCanvas();
@@ -72,7 +78,7 @@ c.fillRect(0, 0, canvas.width*5, canvas.height*5);
 
 c.font = "20px monospace";
 
-async function draw() {
+async function drawText() {
     let x = 10;
     let y = 0;
     for (let i = 0; i < str.length; i++) {
@@ -92,12 +98,57 @@ async function draw() {
 }
 
 
-function runAnimation() {
-    draw().then(() => {
+function runTextAnimation() {
+    drawText().then(() => {
         c.fillStyle = "oklch(20.8% 0.042 265.755)";
         c.fillRect(0, 0, canvas.width*5, canvas.height*5);
-        runAnimation();
+        runTextAnimation();
     });
 }
 
-runAnimation();
+async function runLineAnimation() {
+    let lines = [];
+    for (let i = 0; i < 25; i++) {
+        let px1 = Math.random() * canvas2.width*2.5;
+        let py1 = Math.random() * canvas2.height*2.5;
+        lines.push({
+            x1: px1,
+            y1: py1,
+            x2: px1+200,
+            y2: py1,
+            x1s: Math.random() * 2 - 1,
+            y1s: Math.random() * 2 - 1,
+            x2s: Math.random() * 2 - 1,
+            y2s: Math.random() * 2 - 1,
+        });
+    }
+    let cycle = 0
+    while (true) {
+        c2.clearRect(0, 0, canvas2.width*5, canvas2.height*5);
+        for (let line of lines) {
+            c2.strokeStyle = "rgb(34, 255, 0)";
+            c2.lineWidth = 10;
+            c2.shadowColor = "#22FF00";
+            c2.shadowBlur = 5;
+            c2.beginPath();
+            c2.moveTo(line.x1, line.y1);
+            c2.lineTo(line.x2, line.y2);
+            c2.stroke();
+            line.x1 += line.x1s;
+            line.y1 += line.y1s;
+            line.x2 += line.x2s;
+            line.y2 += line.y2s;
+            if (cycle % 100 == 0) {
+                line.x1s = Math.random()* 2-1;
+                line.y1s = Math.random()* 2-1;
+                line.x2s = Math.random()* 2-1;
+                line.y2s = Math.random()* 2-1;
+            }
+        }
+        cycle++;
+        await sleep(20);
+    }
+}
+
+runTextAnimation();
+runLineAnimation();
