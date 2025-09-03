@@ -58,17 +58,17 @@ let canvas = document.getElementById("vfx");
 let canvas2 = document.getElementById("contact-canvas");
 const c = canvas.getContext("2d");
 const c2 = canvas2.getContext("2d");
+const scale = 0.4;
 
 function resizeCanvas() {
-    const dpr = (window.devicePixelRatio || 1) * 0.2;
-    canvas.width = canvas.clientWidth * dpr;
-    canvas.height = canvas.clientHeight * dpr;
+    canvas.width = canvas.clientWidth * scale;
+    canvas.height = canvas.clientHeight * scale;
     c.setTransform(1, 0, 0, 1, 0, 0); 
-    c.scale(dpr, dpr);
-    canvas2.width = canvas2.clientWidth * dpr;
-    canvas2.height = canvas2.clientHeight * dpr;
+    c.scale(scale, scale);
+    canvas2.width = canvas2.clientWidth * scale;
+    canvas2.height = canvas2.clientHeight * scale;
     c2.setTransform(1, 0, 0, 1, 0, 0); 
-    c2.scale(dpr, dpr); 
+    c2.scale(scale, scale); 
 }
 
 resizeCanvas();
