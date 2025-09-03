@@ -1,4 +1,4 @@
-let isDesktop = false;window.innerWidth >= 768;
+let isDesktop = window.innerWidth >= 768;
 
 const revealsR = document.querySelectorAll(".scrollfxr");
 const revealsL = document.querySelectorAll(".scrollfxl");
