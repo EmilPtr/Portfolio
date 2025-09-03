@@ -1,4 +1,10 @@
-let isDesktop = window.innerWidth >= 768;
+let isDesktop;
+
+if(window.matchMedia("(any-hover:none)").matches) {
+    isDesktop = false;
+} else {
+    isDesktop = true;
+}
 
 const revealsR = document.querySelectorAll(".scrollfxr");
 const revealsL = document.querySelectorAll(".scrollfxl");
