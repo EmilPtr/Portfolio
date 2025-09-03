@@ -1,5 +1,5 @@
 const img = document.getElementById("console");
-const images = ["console1.png", "console2.png"];
+const images = ["../asset/console1.png", "../asset/console2.png"];
 let index = 0;
 
 setInterval(() => {
