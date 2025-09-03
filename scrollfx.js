@@ -1,6 +1,9 @@
+const isDesktop = window.innerWidth >= 768;
+
 const revealsR = document.querySelectorAll(".scrollfxr");
 const revealsL = document.querySelectorAll(".scrollfxl");
 
+if (isDesktop) {
 const observerR = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
         if (entry.isIntersecting) {
@@ -19,6 +22,7 @@ const observerL = new IntersectionObserver((entries) => {
         }
     })
 });
+}
 
 revealsR.forEach(element => observerR.observe(element));
 revealsL.forEach(element => observerL.observe(element));
