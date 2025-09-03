@@ -22,6 +22,10 @@ async function blinkCursor(id) {
     let element = document.getElementById(id);
     let str = element.innerText;
     while (true) {
+        if (!isDesktop) {
+            element.innerText = "";
+            return;
+        }
         element.innerText = str + '█';
         await sleep(400);
         element.innerText = str + '_';
