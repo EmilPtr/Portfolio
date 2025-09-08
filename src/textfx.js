@@ -18,23 +18,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function blinkCursor(id) {
-    let element = document.getElementById(id);
-    let str = element.innerText;
-    while (true) {
-        if (!isDesktop) {
-            element.innerText = "";
-            return;
-        }
-        element.innerText = str + '█';
-        await sleep(400);
-        element.innerText = str + '_';
-        await sleep(400);
-    }
-}
-
 typeWriter("about-title");
 typeWriter("projects-title");
 typeWriter("title");
-blinkCursor("aboutb");
-blinkCursor("projectsb");
