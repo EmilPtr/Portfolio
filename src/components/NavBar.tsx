@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useEffects } from './EffectsContext';
+import { Link } from 'react-router-dom';
 
 export default function NavBar() {
   const [flicker, setFlicker] = useState(false);
@@ -42,8 +43,8 @@ export default function NavBar() {
       <div className="flex items-center w-full relative justify-center">
         {/* Home Link (Far Left) */}
         <div className="absolute left-0">
-          <a 
-            href="#home"
+          <Link 
+            to="/"
             className={`font-mono text-sm tracking-widest uppercase text-white/80 transition-colors duration-300 hover:text-red-500 drop-shadow-[0_0_2px_rgba(255,255,255,0.4)] hover:drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]
                       relative group ${effectsEnabled ? '' : 'before:hidden after:hidden drop-shadow-none hover:drop-shadow-none'}`}
             data-text="Home"
@@ -53,15 +54,15 @@ export default function NavBar() {
               Home
             </span>
             <div className="absolute -bottom-2 left-0 w-0 h-[1px] bg-red-500 group-hover:w-full transition-all duration-300 shadow-[0_0_5px_rgba(239,68,68,0.8)]" />
-          </a>
+          </Link>
         </div>
 
         {/* Other Links (Center) */}
         <ul className="flex space-x-8 md:space-x-12 font-mono text-xs md:text-sm tracking-widest uppercase">
           {['About', 'Projects', 'Contact'].map((item) => (
             <li key={item} className="relative group">
-              <a 
-                href={`#${item.toLowerCase()}`}
+              <Link 
+                to={`/${item.toLowerCase()}`}
                 className={`text-white/80 transition-colors duration-300 group-hover:text-red-500 drop-shadow-[0_0_2px_rgba(255,255,255,0.4)] group-hover:drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]
                           relative ${effectsEnabled ? '' : 'before:hidden after:hidden drop-shadow-none group-hover:drop-shadow-none'}`}
                 data-text={item}
@@ -70,7 +71,7 @@ export default function NavBar() {
                             after:absolute after:inset-0 after:content-[attr(data-text)] after:translate-x-[1px] after:text-red-500/30 after:-z-10 after:pointer-events-none" data-text={item}>
                   {item}
                 </span>
-              </a>
+              </Link>
               {/* Animated Underline */}
               <div className="absolute -bottom-2 left-0 w-0 h-[1px] bg-red-500 group-hover:w-full transition-all duration-300 shadow-[0_0_5px_rgba(239,68,68,0.8)]" />
             </li>
