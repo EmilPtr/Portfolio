@@ -11,8 +11,12 @@ export default function BackgroundCode({ forceEffectsEnabled = true }: { forceEf
     fetch('/code.txt')
       .then((res) => res.text())
       .then((text) => {
-        cachedCode = text;
-        setCode(text);
+        // Limit text length to prevent massive DOM nodes, but keep it whole lines
+        const lines = text.split('\n').slice(0, 150);
+        // Add a newline at the end so it perfectly matches up with the duplicate copy
+        const truncated = lines.join('\n') + '\n';
+        cachedCode = truncated;
+        setCode(truncated);
       })
       .catch((err) => console.error('Failed to load code:', err));
   }, []);
@@ -20,8 +24,8 @@ export default function BackgroundCode({ forceEffectsEnabled = true }: { forceEf
   if (!code) return null;
 
   return (
-    <div className={`absolute inset-0 overflow-hidden pointer-events-none opacity-80 font-mono text-xs md:text-sm whitespace-pre flex justify-center text-red-600 ${forceEffectsEnabled ? 'drop-shadow-[0_0_8px_rgba(220,38,38,0.8)] contrast-125 brightness-110' : ''}`}>
-      <div className="animate-scroll-slow w-full px-8">
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none opacity-80 font-mono text-xs md:text-sm whitespace-pre flex justify-center text-red-600 ${forceEffectsEnabled ? 'drop-shadow-[0_0_8px_rgba(220,38,38,0.8)] contrast-125 brightness-110' : ''}`} style={{ willChange: 'transform' }}>
+      <div className="animate-scroll-slow w-full px-8" style={{ willChange: 'transform' }}>
         <div>{code}</div>
         <div>{code}</div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, memo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, Center, Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -11,18 +11,52 @@ import { Html } from '@react-three/drei';
 import BackgroundCode from './BackgroundCode';
 import { useEffects } from './EffectsContext';
 
-function Model({ url, visible, fadeOpacity, effectsEnabled }: { url: string; visible: boolean; fadeOpacity: number; effectsEnabled: boolean }) {
-  if (url === 'code') {
-    return visible ? (
-      <Html fullscreen zIndexRange={[10, 0]} className="pointer-events-none flex items-center justify-center" style={{ opacity: fadeOpacity }}>
-        <div className="w-full h-full relative">
-          <BackgroundCode forceEffectsEnabled={effectsEnabled} />
-        </div>
-      </Html>
-    ) : null;
-  }
+// Shared materials to avoid creating them per-mesh
+const solidMaterialCache = new THREE.MeshStandardMaterial({
+  color: 0x1a0505,
+  transparent: true,
+  opacity: 0,
+  roughness: 0.3,
+  metalness: 0.6,
+});
 
+const wireframeMaterialCache = new THREE.MeshBasicMaterial({
+  color: 0xdc2626,
+  wireframe: true,
+  transparent: true,
+  opacity: 0,
+});
+
+const CodeModel = memo(({ index, currentIndexRef, fadeProgress, effectsEnabled }: { index: number; currentIndexRef: React.MutableRefObject<number>; fadeProgress: React.MutableRefObject<number>; effectsEnabled: boolean }) => {
+  const htmlRef = useRef<HTMLDivElement>(null);
+
+  useFrame(() => {
+    if (htmlRef.current) {
+      const active = index === currentIndexRef.current;
+      const isNext = index === (currentIndexRef.current + 1) % models.length;
+      
+      let currentOpacity = 0;
+      if (active) currentOpacity = fadeProgress.current;
+      else if (isNext) currentOpacity = 1 - fadeProgress.current;
+      
+      // Add a tiny bit of rounding to prevent floating point CSS bugs
+      const roundedOpacity = Math.max(0, Math.min(1, currentOpacity)).toFixed(3);
+      htmlRef.current.style.opacity = roundedOpacity;
+    }
+  });
+
+  return (
+    <Html fullscreen zIndexRange={[10, 0]} className="pointer-events-none flex items-center justify-center">
+      <div ref={htmlRef} className="w-full h-full relative" style={{ opacity: 0 }}>
+        <BackgroundCode forceEffectsEnabled={effectsEnabled} />
+      </div>
+    </Html>
+  );
+});
+
+const GLTFModel = memo(({ url, index, currentIndexRef, fadeProgress, effectsEnabled }: { url: string; index: number; currentIndexRef: React.MutableRefObject<number>; fadeProgress: React.MutableRefObject<number>; effectsEnabled: boolean }) => {
   const { scene } = useGLTF(`/models/${url}`);
+  const modelRef = useRef<THREE.Group>(null);
   
   // Clone scene to avoid mutating the cached GLTF (do this only once per model)
   const clonedScene = useMemo(() => {
@@ -47,29 +81,11 @@ function Model({ url, visible, fadeOpacity, effectsEnabled }: { url: string; vis
       }
     });
 
+    // Share materials across all instances of the same model
     meshes.forEach((mesh) => {
-      // Create solid translucent material
-      const solidMaterial = new THREE.MeshStandardMaterial({
-        color: 0x1a0505, // Dark red tint
-        transparent: true,
-        opacity: 0,
-        roughness: 0.3,
-        metalness: 0.6,
-      });
+      mesh.material = solidMaterialCache.clone();
 
-      // Create wireframe material
-      const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xdc2626, // Tailwind red-600
-        wireframe: true,
-        transparent: true,
-        opacity: 0,
-      });
-
-      mesh.material = solidMaterial;
-
-      // Add wireframe
-      const wireframeMesh = new THREE.Mesh(mesh.geometry, wireframeMaterial);
-      // Important: copy transforms and link it to the child
+      const wireframeMesh = new THREE.Mesh(mesh.geometry, wireframeMaterialCache.clone());
       wireframeMesh.name = "WireframeOverlay";
       mesh.add(wireframeMesh);
     });
@@ -77,28 +93,43 @@ function Model({ url, visible, fadeOpacity, effectsEnabled }: { url: string; vis
     return clone;
   }, [scene]);
 
-  // Update opacities on frame change instead of recreating the scene
-  useEffect(() => {
+  useFrame(() => {
+    if (!modelRef.current) return;
+    
+    const active = index === currentIndexRef.current;
+    const isNext = index === (currentIndexRef.current + 1) % models.length;
+
+    let currentOpacity = 0;
+    if (active) currentOpacity = fadeProgress.current;
+    else if (isNext) currentOpacity = 1 - fadeProgress.current;
+
+    // Aggressively cull invisible objects completely
+    if (currentOpacity <= 0.01) {
+      if (modelRef.current.visible) modelRef.current.visible = false;
+      return;
+    }
+    
+    if (!modelRef.current.visible) modelRef.current.visible = true;
+
     clonedScene.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.name !== "WireframeOverlay") {
+      if (child instanceof THREE.Mesh) {
         if (child.material instanceof THREE.Material) {
-          child.material.opacity = effectsEnabled ? 0.85 * fadeOpacity : 0.5 * fadeOpacity;
-        }
-      }
-      if (child instanceof THREE.Mesh && child.name === "WireframeOverlay") {
-        if (child.material instanceof THREE.Material) {
-          child.material.opacity = effectsEnabled ? 0.4 * fadeOpacity : 0.15 * fadeOpacity;
+          if (child.name === "WireframeOverlay") {
+            child.material.opacity = effectsEnabled ? 0.4 * currentOpacity : 0.15 * currentOpacity;
+          } else {
+            child.material.opacity = effectsEnabled ? 0.85 * currentOpacity : 0.5 * currentOpacity;
+          }
         }
       }
     });
-  }, [clonedScene, fadeOpacity, effectsEnabled]);
+  });
 
-  return visible ? (
-    <Center>
+  return (
+    <Center ref={modelRef} visible={false}>
       <primitive object={clonedScene} />
     </Center>
-  ) : null;
-}
+  );
+});
 
 // Preload models
 models.forEach((url) => {
@@ -108,36 +139,41 @@ models.forEach((url) => {
 });
 
 function SceneContent({ effectsEnabled }: { effectsEnabled: boolean }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState(1);
-  const [fadeValue, setFadeValue] = useState(1);
-  
   const groupRef = useRef<THREE.Group>(null);
   const { pointer } = useThree();
+  
+  // Use a ref for the index instead of state to prevent ANY re-renders in the children
+  const currentIndexRef = useRef(0);
+  const fadeProgress = useRef(1); // 1 means fully visible
 
   useEffect(() => {
-    const cycleInterval = setInterval(() => {
-      const startTime = Date.now();
-      
-      const transition = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / FADE_DURATION, 1);
+    let cycleTimeout: number;
+    
+    const startCycle = () => {
+      cycleTimeout = window.setTimeout(() => {
+        const startTime = Date.now();
         
-        setFadeValue(1 - progress);
+        const transition = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(elapsed / FADE_DURATION, 1);
+          
+          fadeProgress.current = 1 - progress;
 
-        if (progress < 1) {
-          requestAnimationFrame(transition);
-        } else {
-          setCurrentIndex((prev) => (prev + 1) % models.length);
-          setNextIndex((prev) => (prev + 1) % models.length);
-          setFadeValue(1);
-        }
-      };
-      
-      requestAnimationFrame(transition);
-    }, CYCLE_DURATION);
+          if (progress < 1) {
+            requestAnimationFrame(transition);
+          } else {
+            currentIndexRef.current = (currentIndexRef.current + 1) % models.length;
+            fadeProgress.current = 1;
+            startCycle();
+          }
+        };
+        
+        requestAnimationFrame(transition);
+      }, CYCLE_DURATION - FADE_DURATION); // Start fading before cycle ends
+    };
 
-    return () => clearInterval(cycleInterval);
+    startCycle();
+    return () => clearTimeout(cycleTimeout);
   }, []);
 
   useFrame((state, delta) => {
@@ -160,28 +196,28 @@ function SceneContent({ effectsEnabled }: { effectsEnabled: boolean }) {
       
       <group ref={groupRef}>
         {models.map((url, i) => {
-          let opacity = 0;
-          let visible = false;
-          
-          if (i === currentIndex) {
-            opacity = fadeValue;
-            visible = opacity > 0;
-          } else if (i === nextIndex && fadeValue < 1) {
-            opacity = 1 - fadeValue;
-            visible = opacity > 0;
-          }
-
+          if (url === 'code') return null; // We render code model outside the rotating group
           return (
-            <Model 
+            <GLTFModel 
               key={url} 
               url={url} 
-              visible={visible} 
-              fadeOpacity={opacity} 
+              index={i}
+              currentIndexRef={currentIndexRef}
+              fadeProgress={fadeProgress} 
               effectsEnabled={effectsEnabled}
             />
           );
         })}
       </group>
+      
+      {/* CodeModel rendered outside the rotating group so the HTML doesn't jump as it rotates */}
+      <CodeModel 
+        key="code" 
+        index={models.indexOf('code')}
+        currentIndexRef={currentIndexRef}
+        fadeProgress={fadeProgress} 
+        effectsEnabled={effectsEnabled}
+      />
     </>
   );
 }
@@ -192,7 +228,9 @@ export default function ModelViewer() {
     <Canvas
       camera={{ position: [0, 0, 8], fov: 45 }}
       style={{ background: 'transparent' }}
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
+      performance={{ min: 0.5 }}
+      gl={{ antialias: false, powerPreference: "high-performance" }}
     >
       <SceneContent effectsEnabled={effectsEnabled} />
     </Canvas>
